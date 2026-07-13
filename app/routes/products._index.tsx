@@ -204,7 +204,7 @@ export default function Products() {
                     </td>
                     <td className="px-6 py-4">
                       <span className="text-sm text-slate-700">
-                        {product.category?.name ?? "—"}
+                        {product.category?.name ?? "-"}
                       </span>
                     </td>
                     <td className="px-6 py-4">

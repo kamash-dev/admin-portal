@@ -410,7 +410,7 @@ export default function Orders() {
                             )} */}
                           </>
                         ) : (
-                          <span className="text-xs text-admin-muted">—</span>
+                          <span className="text-xs text-admin-muted">-</span>
                         )}
                       </div>
                     </td>

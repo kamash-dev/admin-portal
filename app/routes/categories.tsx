@@ -230,7 +230,7 @@ export default function Categories() {
                   </td>
                   <td className="px-6 py-4">
                     <span className="text-sm text-admin-muted">
-                      {cat.description || "—"}
+                      {cat.description || "-"}
                     </span>
                   </td>
                   <td className="px-6 py-4">

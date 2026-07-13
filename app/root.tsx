@@ -70,7 +70,7 @@ export function ErrorBoundary() {
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>Error — Softborn Admin</title>
+        <title>Error - Softborn Admin</title>
         <Links />
       </head>
       <body className="bg-admin-bg">

@@ -275,7 +275,7 @@ export default function OrderDetails() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left column — main content */}
+        {/* Left column - main content */}
         <div className="lg:col-span-2 space-y-6">
           {/* Order Items */}
           <div className="bg-white rounded-xl border border-admin-border overflow-hidden">
@@ -357,7 +357,7 @@ export default function OrderDetails() {
           </div>
         </div>
 
-        {/* Right column — sidebar */}
+        {/* Right column - sidebar */}
         <div className="space-y-6">
           {/* Customer Info */}
           <div className="bg-white rounded-xl border border-admin-border overflow-hidden">
