@@ -352,11 +352,10 @@ export default function AddProduct() {
 
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                      Size <span className="text-admin-danger">*</span>
+                      Size <span className="text-admin-muted">(optional)</span>
                     </label>
                     <input
                       type="text"
-                      required
                       value={variant.size}
                       onChange={(e) =>
                         updateVariant(index, "size", e.target.value)
@@ -368,11 +367,10 @@ export default function AddProduct() {
 
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                      Color <span className="text-admin-danger">*</span>
+                      Color <span className="text-admin-muted">(optional)</span>
                     </label>
                     <input
                       type="text"
-                      required
                       value={variant.color}
                       onChange={(e) =>
                         updateVariant(index, "color", e.target.value)

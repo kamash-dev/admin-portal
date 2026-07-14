@@ -12,8 +12,8 @@ export type OrderStatus =
 export interface OrderItemVariant {
   id: string;
   title: string;
-  size: string;
-  color: string;
+  size: string | null;
+  color: string | null;
   price: number;
   images: string[];
   product: {
@@ -91,8 +91,8 @@ export interface OrderDetailItem {
   variant: {
     id: string;
     title: string;
-    size: string;
-    color: string;
+    size: string | null;
+    color: string | null;
     images: string[];
   };
   product: {

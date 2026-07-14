@@ -105,8 +105,8 @@ function variantToFormState(v: ProductVariant): VariantFormState {
   return {
     id: v.id,
     title: v.title,
-    size: v.size,
-    color: v.color,
+    size: v.size ?? "",
+    color: v.color ?? "",
     price: v.price,
     images: v.images ?? [],
     tags: (v.tags ?? []).join(", "),
@@ -567,12 +567,11 @@ export default function EditProduct() {
 
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                    Size <span className="text-admin-danger">*</span>
+                    Size <span className="text-admin-muted">(optional)</span>
                   </label>
                   <input
                     type="text"
-                    required
-                    value={variant.size}
+                    value={variant.size ?? ""}
                     onChange={(e) =>
                       updateVariantField(index, "size", e.target.value)
                     }
@@ -582,12 +581,11 @@ export default function EditProduct() {
 
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                    Color <span className="text-admin-danger">*</span>
+                    Color <span className="text-admin-muted">(optional)</span>
                   </label>
                   <input
                     type="text"
-                    required
-                    value={variant.color}
+                    value={variant.color ?? ""}
                     onChange={(e) =>
                       updateVariantField(index, "color", e.target.value)
                     }
@@ -789,7 +787,7 @@ export default function EditProduct() {
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                  Size
+                  Size <span className="text-admin-muted">(optional)</span>
                 </label>
                 <input
                   type="text"
@@ -804,7 +802,7 @@ export default function EditProduct() {
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                  Color
+                  Color <span className="text-admin-muted">(optional)</span>
                 </label>
                 <input
                   type="text"

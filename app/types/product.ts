@@ -2,8 +2,8 @@ export interface ProductVariant {
   id: string;
   productId: string;
   title: string;
-  size: string;
-  color: string;
+  size: string | null;
+  color: string | null;
   price: number;
   images: string[];
   tags: string[];
@@ -31,8 +31,8 @@ export interface Product {
 
 export interface CreateVariantInput {
   title: string;
-  size: string;
-  color: string;
+  size?: string | null;
+  color?: string | null;
   price: number;
   images: string[];
   tags: string[];
