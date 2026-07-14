@@ -17,11 +17,15 @@ import {
   CreditCard,
   Banknote,
   Package,
+  PackageCheck,
   MoreHorizontal,
   Eye,
 } from "lucide-react";
 import {
   getAdminOrders,
+  acceptOrder,
+  dispatchOrder,
+  deliverOrder,
   cancelOrder,
   returnOrder,
 } from "~/services/order.server";
@@ -35,27 +39,32 @@ const statusConfig: Record<
   { icon: typeof Clock; color: string; bg: string }
 > = {
   PENDING: { icon: Clock, color: "text-amber-700", bg: "bg-amber-50" },
-  PAID: { icon: CreditCard, color: "text-blue-700", bg: "bg-blue-50" },
-  SHIPPED: { icon: Truck, color: "text-violet-700", bg: "bg-violet-50" },
-  DELIVERED: { icon: CheckCircle2, color: "text-emerald-700", bg: "bg-emerald-50" },
+  ACCEPTED: { icon: CheckCircle2, color: "text-blue-700", bg: "bg-blue-50" },
+  DISPATCHED: { icon: Truck, color: "text-violet-700", bg: "bg-violet-50" },
+  DELIVERED: { icon: PackageCheck, color: "text-emerald-700", bg: "bg-emerald-50" },
   CANCELLED: { icon: XCircle, color: "text-red-700", bg: "bg-red-50" },
   RETURNED: { icon: RotateCcw, color: "text-slate-700", bg: "bg-slate-100" },
+  // Legacy
+  PAID: { icon: CreditCard, color: "text-blue-700", bg: "bg-blue-50" },
+  SHIPPED: { icon: Truck, color: "text-violet-700", bg: "bg-violet-50" },
 };
 
 const statusLabels: Record<OrderStatus, string> = {
   PENDING: "Pending",
-  PAID: "Paid",
-  SHIPPED: "Shipped",
+  ACCEPTED: "Accepted",
+  DISPATCHED: "Dispatched",
   DELIVERED: "Delivered",
   CANCELLED: "Cancelled",
   RETURNED: "Returned",
+  PAID: "Paid",
+  SHIPPED: "Shipped",
 };
 
 const tabs: ("ALL" | OrderStatus)[] = [
   "ALL",
   "PENDING",
-  "PAID",
-  "SHIPPED",
+  "ACCEPTED",
+  "DISPATCHED",
   "DELIVERED",
   "CANCELLED",
   "RETURNED",
@@ -91,15 +100,20 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const orderId = formData.get("orderId") as string;
 
   try {
-    if (intent === "cancel") {
-      await cancelOrder(request, orderId);
-      return { success: "Order cancelled successfully" };
+    switch (intent) {
+      case "accept":
+        return { success: (await acceptOrder(request, orderId)).message };
+      case "dispatch":
+        return { success: (await dispatchOrder(request, orderId)).message };
+      case "deliver":
+        return { success: (await deliverOrder(request, orderId)).message };
+      case "cancel":
+        return { success: (await cancelOrder(request, orderId)).message };
+      case "return":
+        return { success: (await returnOrder(request, orderId)).message };
+      default:
+        return { error: "Unknown action" };
     }
-    if (intent === "return") {
-      await returnOrder(request, orderId);
-      return { success: "Return processed successfully" };
-    }
-    return { error: "Unknown action" };
   } catch (error) {
     return {
       error: error instanceof Error ? error.message : "Action failed",
@@ -108,7 +122,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 function formatAmount(paise: number) {
-  return `₹${(paise / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`;
+  return `₹${paise}`;
 }
 
 function getUserName(order: Order) {
@@ -122,6 +136,7 @@ export default function Orders() {
   const fetcher = useFetcher<typeof action>();
 
   const isBusy = fetcher.state !== "idle";
+  const pendingOrderId = fetcher.formData?.get("orderId") as string | undefined;
   const actionError = (fetcher.data as { error?: string })?.error;
   const actionSuccess = (fetcher.data as { success?: string })?.success;
 
@@ -157,7 +172,10 @@ export default function Orders() {
     updateParams({ page: newPage > 1 ? String(newPage) : null });
   };
 
-  const handleAction = (orderId: string, intent: "cancel" | "return" | "confirm") => {
+  const handleAction = (
+    orderId: string,
+    intent: "accept" | "dispatch" | "deliver" | "cancel" | "return"
+  ) => {
     const fd = new FormData();
     fd.append("intent", intent);
     fd.append("orderId", orderId);
@@ -165,10 +183,14 @@ export default function Orders() {
     setMenuOpen(null);
   };
 
+  const canAccept = (status: OrderStatus) => status === "PENDING";
+  const canDispatch = (status: OrderStatus) =>
+    status === "ACCEPTED" || status === "PAID";
+  const canDeliver = (status: OrderStatus) =>
+    status === "DISPATCHED" || status === "SHIPPED";
   const canCancel = (status: OrderStatus) =>
-    status === "PENDING" || status === "PAID";
+    status === "PENDING" || status === "ACCEPTED" || status === "PAID";
   const canReturn = (status: OrderStatus) => status === "DELIVERED";
-  const canConfirm = (status: OrderStatus) => status === "PENDING";
 
   const pageNumbers = Array.from(
     { length: pagination.totalPages },
@@ -272,6 +294,7 @@ export default function Orders() {
                 const cfg = statusConfig[order.status] ?? statusConfig.PENDING;
                 const StatusIcon = cfg.icon;
                 const hasActions = true;
+                const rowLoading = isBusy && pendingOrderId === order.id;
 
                 return (
                   <tr
@@ -358,7 +381,14 @@ export default function Orders() {
                             >
                               <Popover>
                                 <PopoverTrigger>
-                                  <MoreHorizontal size={18} />
+                                  {rowLoading ? (
+                                    <Loader2
+                                      size={18}
+                                      className="animate-spin text-admin-primary"
+                                    />
+                                  ) : (
+                                    <MoreHorizontal size={18} />
+                                  )}
                                 </PopoverTrigger>
                                 <PopoverContent className="bg-white border border-admin-border rounded-lg shadow-lg w-fit mr-7">
                                   <div className="flex flex-col gap-2">
@@ -369,24 +399,34 @@ export default function Orders() {
                                       <Eye size={14} />
                                       View Details
                                     </Link>
-                                    {
-                                      canConfirm(order.status) && (
-                                        <button onClick={() => handleAction(order.id, "confirm")} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-admin-primary hover:bg-admin-primary/5 transition-colors disabled:opacity-50">
-                                          <CheckCircle2 size={14} />
-                                          Confirm Order
-                                        </button>
-                                      )
-                                    }
+                                    {canAccept(order.status) && (
+                                      <button disabled={isBusy} onClick={() => handleAction(order.id, "accept")} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-admin-primary hover:bg-admin-primary/5 transition-colors disabled:opacity-50">
+                                        <CheckCircle2 size={14} />
+                                        Accept Order
+                                      </button>
+                                    )}
+                                    {canDispatch(order.status) && (
+                                      <button disabled={isBusy} onClick={() => handleAction(order.id, "dispatch")} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-violet-700 hover:bg-violet-50 transition-colors disabled:opacity-50">
+                                        <Truck size={14} />
+                                        Dispatch Order
+                                      </button>
+                                    )}
+                                    {canDeliver(order.status) && (
+                                      <button disabled={isBusy} onClick={() => handleAction(order.id, "deliver")} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-emerald-700 hover:bg-emerald-50 transition-colors disabled:opacity-50">
+                                        <PackageCheck size={14} />
+                                        Mark Delivered
+                                      </button>
+                                    )}
                                     {canCancel(order.status) && (
-                                      <button onClick={() => handleAction(order.id, "cancel")} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-admin-danger hover:bg-red-50 transition-colors disabled:opacity-50">
+                                      <button disabled={isBusy} onClick={() => handleAction(order.id, "cancel")} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-admin-danger hover:bg-red-50 transition-colors disabled:opacity-50">
                                         <Ban size={14} />
                                         Cancel Order
                                       </button>
                                     )}
                                     {canReturn(order.status) && (
-                                      <button onClick={() => handleAction(order.id, "return")} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-700 hover:bg-admin-bg transition-colors disabled:opacity-50">
+                                      <button disabled={isBusy} onClick={() => handleAction(order.id, "return")} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-700 hover:bg-admin-bg transition-colors disabled:opacity-50">
                                         <RotateCcw size={14} />
-                                        Process Return
+                                        Return / Refund
                                       </button>
                                     )}
                                   </div>

@@ -3,6 +3,7 @@ import type { LoaderFunctionArgs, ActionFunctionArgs } from "@remix-run/node";
 import {
   ArrowLeft,
   Package,
+  PackageCheck,
   Truck,
   CreditCard,
   Banknote,
@@ -22,6 +23,9 @@ import {
 import { useState } from "react";
 import {
   getOrderDetails,
+  acceptOrder,
+  dispatchOrder,
+  deliverOrder,
   cancelOrder,
   returnOrder,
 } from "~/services/order.server";
@@ -37,20 +41,20 @@ const statusConfig: Record<
     bg: "bg-amber-50",
     border: "border-amber-200",
   },
-  PAID: {
-    icon: CreditCard,
+  ACCEPTED: {
+    icon: CheckCircle2,
     color: "text-blue-700",
     bg: "bg-blue-50",
     border: "border-blue-200",
   },
-  SHIPPED: {
+  DISPATCHED: {
     icon: Truck,
     color: "text-violet-700",
     bg: "bg-violet-50",
     border: "border-violet-200",
   },
   DELIVERED: {
-    icon: CheckCircle2,
+    icon: PackageCheck,
     color: "text-emerald-700",
     bg: "bg-emerald-50",
     border: "border-emerald-200",
@@ -67,15 +71,30 @@ const statusConfig: Record<
     bg: "bg-slate-100",
     border: "border-slate-200",
   },
+  // Legacy
+  PAID: {
+    icon: CreditCard,
+    color: "text-blue-700",
+    bg: "bg-blue-50",
+    border: "border-blue-200",
+  },
+  SHIPPED: {
+    icon: Truck,
+    color: "text-violet-700",
+    bg: "bg-violet-50",
+    border: "border-violet-200",
+  },
 };
 
 const statusLabels: Record<OrderStatus, string> = {
   PENDING: "Pending",
-  PAID: "Paid",
-  SHIPPED: "Shipped",
+  ACCEPTED: "Accepted",
+  DISPATCHED: "Dispatched",
   DELIVERED: "Delivered",
   CANCELLED: "Cancelled",
   RETURNED: "Returned",
+  PAID: "Paid",
+  SHIPPED: "Shipped",
 };
 
 export const loader = async ({ request, params }: LoaderFunctionArgs) => {
@@ -101,15 +120,20 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
   const intent = formData.get("intent") as string;
 
   try {
-    if (intent === "cancel") {
-      await cancelOrder(request, id);
-      return { success: "Order cancelled successfully" };
+    switch (intent) {
+      case "accept":
+        return { success: (await acceptOrder(request, id)).message };
+      case "dispatch":
+        return { success: (await dispatchOrder(request, id)).message };
+      case "deliver":
+        return { success: (await deliverOrder(request, id)).message };
+      case "cancel":
+        return { success: (await cancelOrder(request, id)).message };
+      case "return":
+        return { success: (await returnOrder(request, id)).message };
+      default:
+        return { error: "Unknown action" };
     }
-    if (intent === "return") {
-      await returnOrder(request, id);
-      return { success: "Return processed successfully" };
-    }
-    return { error: "Unknown action" };
   } catch (error) {
     return {
       error: error instanceof Error ? error.message : "Action failed",
@@ -118,9 +142,7 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
 };
 
 function formatAmount(paise: number) {
-  return `₹${(paise / 100).toLocaleString("en-IN", {
-    minimumFractionDigits: 2,
-  })}`;
+  return `₹${paise}`;
 }
 
 function formatDate(dateStr: string) {
@@ -163,6 +185,7 @@ export default function OrderDetails() {
   const fetcher = useFetcher<typeof action>();
 
   const isBusy = fetcher.state !== "idle";
+  const pendingIntent = fetcher.formData?.get("intent") as string | undefined;
   const actionError = (fetcher.data as { error?: string })?.error;
   const actionSuccess = (fetcher.data as { success?: string })?.success;
 
@@ -189,9 +212,13 @@ export default function OrderDetails() {
   const typedOrder = order as unknown as OrderDetail;
   const cfg = statusConfig[typedOrder.status] ?? statusConfig.PENDING;
   const StatusIcon = cfg.icon;
+  const status = typedOrder.status;
+  const canAccept = status === "PENDING";
+  const canDispatch = status === "ACCEPTED" || status === "PAID";
+  const canDeliver = status === "DISPATCHED" || status === "SHIPPED";
   const canCancel =
-    typedOrder.status === "PENDING" || typedOrder.status === "PAID";
-  const canReturn = typedOrder.status === "DELIVERED";
+    status === "PENDING" || status === "ACCEPTED" || status === "PAID";
+  const canReturn = status === "DELIVERED";
 
   const customerName = typedOrder.customer
     ? [typedOrder.customer.firstName, typedOrder.customer.lastName]
@@ -226,6 +253,57 @@ export default function OrderDetails() {
             {statusLabels[typedOrder.status] ?? typedOrder.status}
           </span>
 
+          {canAccept && (
+            <fetcher.Form method="post">
+              <input type="hidden" name="intent" value="accept" />
+              <button
+                type="submit"
+                disabled={isBusy}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-admin-primary border border-admin-primary rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
+              >
+                {isBusy && pendingIntent === "accept" ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <CheckCircle2 size={14} />
+                )}
+                Accept Order
+              </button>
+            </fetcher.Form>
+          )}
+          {canDispatch && (
+            <fetcher.Form method="post">
+              <input type="hidden" name="intent" value="dispatch" />
+              <button
+                type="submit"
+                disabled={isBusy}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-violet-700 bg-violet-50 border border-violet-200 rounded-lg hover:bg-violet-100 transition-colors disabled:opacity-50"
+              >
+                {isBusy && pendingIntent === "dispatch" ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <Truck size={14} />
+                )}
+                Dispatch Order
+              </button>
+            </fetcher.Form>
+          )}
+          {canDeliver && (
+            <fetcher.Form method="post">
+              <input type="hidden" name="intent" value="deliver" />
+              <button
+                type="submit"
+                disabled={isBusy}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-colors disabled:opacity-50"
+              >
+                {isBusy && pendingIntent === "deliver" ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <PackageCheck size={14} />
+                )}
+                Mark Delivered
+              </button>
+            </fetcher.Form>
+          )}
           {canCancel && (
             <fetcher.Form method="post">
               <input type="hidden" name="intent" value="cancel" />
@@ -234,7 +312,7 @@ export default function OrderDetails() {
                 disabled={isBusy}
                 className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50"
               >
-                {isBusy ? (
+                {isBusy && pendingIntent === "cancel" ? (
                   <Loader2 size={14} className="animate-spin" />
                 ) : (
                   <Ban size={14} />
@@ -251,12 +329,12 @@ export default function OrderDetails() {
                 disabled={isBusy}
                 className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 border border-slate-200 rounded-lg hover:bg-slate-200 transition-colors disabled:opacity-50"
               >
-                {isBusy ? (
+                {isBusy && pendingIntent === "return" ? (
                   <Loader2 size={14} className="animate-spin" />
                 ) : (
                   <RotateCcw size={14} />
                 )}
-                Process Return
+                Return / Refund
               </button>
             </fetcher.Form>
           )}
@@ -451,7 +529,19 @@ export default function OrderDetails() {
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-xs text-admin-muted">Amount</span>
+                <span className="text-xs text-admin-muted">Subtotal</span>
+                <span className="text-sm font-semibold text-slate-900">
+                  {formatAmount(typedOrder.subtotal)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-admin-muted">Delivery Fee</span>
+                <span className="text-sm font-semibold text-slate-900">
+                  {typedOrder.deliveryFee ? formatAmount(typedOrder.deliveryFee) : "Free"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between"> 
+                <span className="text-xs text-admin-muted">Total</span>
                 <span className="text-sm font-semibold text-slate-900">
                   {formatAmount(typedOrder.totalAmount)}
                 </span>

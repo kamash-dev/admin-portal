@@ -1,10 +1,13 @@
 export type OrderStatus =
   | "PENDING"
-  | "PAID"
-  | "SHIPPED"
+  | "ACCEPTED"
+  | "DISPATCHED"
   | "DELIVERED"
   | "CANCELLED"
-  | "RETURNED";
+  | "RETURNED"
+  // Legacy statuses kept for backward compatibility with older orders
+  | "PAID"
+  | "SHIPPED";
 
 export interface OrderItemVariant {
   id: string;
