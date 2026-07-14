@@ -5,6 +5,7 @@ import {
   Package,
   Truck,
   CreditCard,
+  Banknote,
   Clock,
   CheckCircle2,
   XCircle,
@@ -430,6 +431,25 @@ export default function OrderDetails() {
               </h2>
             </div>
             <div className="px-5 py-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-admin-muted">Method</span>
+                <span
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${
+                    typedOrder.paymentMode === "ONLINE"
+                      ? "bg-blue-50 text-blue-700 border-blue-200"
+                      : "bg-amber-50 text-amber-700 border-amber-200"
+                  }`}
+                >
+                  {typedOrder.paymentMode === "ONLINE" ? (
+                    <CreditCard size={12} />
+                  ) : (
+                    <Banknote size={12} />
+                  )}
+                  {typedOrder.paymentMode === "ONLINE"
+                    ? "Online Payment"
+                    : "Cash on Delivery"}
+                </span>
+              </div>
               <div className="flex items-center justify-between">
                 <span className="text-xs text-admin-muted">Amount</span>
                 <span className="text-sm font-semibold text-slate-900">

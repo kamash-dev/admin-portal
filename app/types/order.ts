@@ -34,12 +34,16 @@ export interface OrderUser {
   lastName: string;
 }
 
+export type PaymentMode = "COD" | "ONLINE";
+
 export interface Order {
   id: string;
   userId: string | null;
   user: OrderUser | null;
   items: OrderItem[];
   totalAmount: number;
+  deliveryFee: number;
+  paymentMode: PaymentMode;
   status: OrderStatus;
   razorpayOrderId: string | null;
   razorpayPaymentId: string | null;
@@ -98,7 +102,10 @@ export interface OrderDetailItem {
 export interface OrderDetail {
   id: string;
   status: OrderStatus;
+  subtotal: number;
+  deliveryFee: number;
   totalAmount: number;
+  paymentMode: PaymentMode;
   razorpayOrderId: string | null;
   razorpayPaymentId: string | null;
   createdAt: string;

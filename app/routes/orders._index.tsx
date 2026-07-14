@@ -15,6 +15,7 @@ import {
   RotateCcw,
   Ban,
   CreditCard,
+  Banknote,
   Package,
   MoreHorizontal,
   Eye,
@@ -253,6 +254,9 @@ export default function Orders() {
                   Total
                 </th>
                 <th className="text-left px-6 py-3 text-xs font-semibold text-admin-muted uppercase tracking-wider">
+                  Payment
+                </th>
+                <th className="text-left px-6 py-3 text-xs font-semibold text-admin-muted uppercase tracking-wider">
                   Status
                 </th>
                 <th className="text-left px-6 py-3 text-xs font-semibold text-admin-muted uppercase tracking-wider">
@@ -304,6 +308,22 @@ export default function Orders() {
                     <td className="px-6 py-4">
                       <span className="text-sm font-medium text-slate-900">
                         {formatAmount(order.totalAmount)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${
+                          order.paymentMode === "ONLINE"
+                            ? "bg-blue-50 text-blue-700 border-blue-200"
+                            : "bg-amber-50 text-amber-700 border-amber-200"
+                        }`}
+                      >
+                        {order.paymentMode === "ONLINE" ? (
+                          <CreditCard size={12} />
+                        ) : (
+                          <Banknote size={12} />
+                        )}
+                        {order.paymentMode === "ONLINE" ? "Online" : "COD"}
                       </span>
                     </td>
                     <td className="px-6 py-4">
