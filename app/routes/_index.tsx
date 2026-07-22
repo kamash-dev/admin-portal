@@ -3,52 +3,54 @@ import {
   ShoppingCart,
   Users,
   DollarSign,
-  TrendingUp,
-  TrendingDown,
   ArrowUpRight,
   Clock,
   CheckCircle2,
   Truck,
   AlertCircle,
 } from "lucide-react";
-import { Link, useNavigate } from "@remix-run/react";
+import { Link, useNavigate, useLoaderData, Form } from "@remix-run/react";
+import type { LoaderFunctionArgs } from "@remix-run/node";
+import type { DateRange } from "react-day-picker";
 import { useAuth } from "~/context/auth.context";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { getDashboardStats } from "~/services/dashboard.server";
+import { DateRangePicker } from "~/components/date-range-picker";
 
-const stats = [
-  {
-    label: "Total Revenue",
-    value: "$45,231",
-    change: "+12.5%",
-    trend: "up" as const,
-    icon: DollarSign,
-    color: "bg-emerald-50 text-emerald-600",
-  },
-  {
-    label: "Total Orders",
-    value: "1,284",
-    change: "+8.2%",
-    trend: "up" as const,
-    icon: ShoppingCart,
-    color: "bg-blue-50 text-blue-600",
-  },
-  {
-    label: "Products",
-    value: "356",
-    change: "+3.1%",
-    trend: "up" as const,
-    icon: Package,
-    color: "bg-violet-50 text-violet-600",
-  },
-  {
-    label: "Customers",
-    value: "2,847",
-    change: "-1.4%",
-    trend: "down" as const,
-    icon: Users,
-    color: "bg-amber-50 text-amber-600",
-  },
-];
+const toISODate = (d?: Date) =>
+  d
+    ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+        d.getDate()
+      ).padStart(2, "0")}`
+    : "";
+
+const parseISODate = (s: string) => (s ? new Date(`${s}T00:00:00`) : undefined);
+
+export const loader = async ({ request }: LoaderFunctionArgs) => {
+  const url = new URL(request.url);
+  const startDate = url.searchParams.get("startDate") || undefined;
+  const endDate = url.searchParams.get("endDate") || undefined;
+
+  try {
+    const stats = await getDashboardStats(request, { startDate, endDate });
+    return {
+      stats,
+      error: null,
+      startDate: startDate ?? "",
+      endDate: endDate ?? "",
+    };
+  } catch (error) {
+    // Let the 401 session-expiry redirect (a thrown Response) reach Remix.
+    if (error instanceof Response) throw error;
+    return {
+      stats: null,
+      error:
+        error instanceof Error ? error.message : "Failed to load dashboard stats",
+      startDate: startDate ?? "",
+      endDate: endDate ?? "",
+    };
+  }
+};
 
 const recentOrders = [
   {
@@ -107,21 +109,88 @@ const statusConfig: Record<
 };
 
 export default function Dashboard() {
-  const { isLoggedIn   } = useAuth();
-  console.log(isLoggedIn);
+  const { stats, error, startDate, endDate } = useLoaderData<typeof loader>();
+  const { isLoggedIn } = useAuth();
   const navigate = useNavigate();
+
+  const [range, setRange] = useState<DateRange | undefined>({
+    from: parseISODate(startDate),
+    to: parseISODate(endDate),
+  });
+
+  // Keep the picker in sync with the URL (e.g. after "Clear" navigates to "/").
+  useEffect(() => {
+    setRange({ from: parseISODate(startDate), to: parseISODate(endDate) });
+  }, [startDate, endDate]);
 
   useEffect(() => {
     if (!isLoggedIn) {
       return navigate("/login");
     }
   }, [isLoggedIn]);
-  
+
+  const statCards = [
+    {
+      label: "Total Revenue",
+      value: stats ? `₹${stats.totalRevenue.toLocaleString()}` : "—",
+      icon: DollarSign,
+      color: "bg-emerald-50 text-emerald-600",
+    },
+    {
+      label: "Total Orders",
+      value: stats ? stats.totalOrders.toLocaleString() : "—",
+      icon: ShoppingCart,
+      color: "bg-blue-50 text-blue-600",
+    },
+    {
+      label: "Products",
+      value: stats ? stats.totalProducts.toLocaleString() : "—",
+      icon: Package,
+      color: "bg-violet-50 text-violet-600",
+    },
+    {
+      label: "Customers",
+      value: stats ? stats.totalCustomers.toLocaleString() : "—",
+      icon: Users,
+      color: "bg-amber-50 text-amber-600",
+    },
+  ];
+
   return (
     <div className="space-y-6">
+      {/* Date Range Filter */}
+      <Form
+        method="get"
+        className="flex flex-wrap items-center gap-3 bg-white rounded-xl border border-admin-border p-4"
+      >
+        <input type="hidden" name="startDate" value={toISODate(range?.from)} />
+        <input type="hidden" name="endDate" value={toISODate(range?.to)} />
+        <DateRangePicker value={range} onChange={setRange} />
+        <button
+          type="submit"
+          className="px-4 py-2 bg-admin-primary text-white rounded-lg text-sm font-semibold hover:bg-admin-primary-hover transition-colors"
+        >
+          Apply
+        </button>
+        {(startDate || endDate) && (
+          <Link
+            to="/"
+            className="px-4 py-2 border border-admin-border rounded-lg text-sm font-medium text-slate-700 hover:bg-admin-bg transition-colors"
+          >
+            Clear
+          </Link>
+        )}
+      </Form>
+
+      {error && (
+        <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-admin-danger font-medium">
+          {error}
+        </div>
+      )}
+
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat) => (
+        {statCards.map((stat) => (
           <div
             key={stat.label}
             className="bg-white rounded-xl border border-admin-border p-5 hover:shadow-card-hover transition-shadow"
@@ -132,18 +201,6 @@ export default function Dashboard() {
               >
                 <stat.icon size={20} />
               </div>
-              <span
-                className={`inline-flex items-center gap-1 text-xs font-semibold ${
-                  stat.trend === "up" ? "text-emerald-600" : "text-red-500"
-                }`}
-              >
-                {stat.trend === "up" ? (
-                  <TrendingUp size={14} />
-                ) : (
-                  <TrendingDown size={14} />
-                )}
-                {stat.change}
-              </span>
             </div>
             <p className="text-2xl font-bold text-slate-900">{stat.value}</p>
             <p className="text-sm text-admin-muted mt-0.5">{stat.label}</p>
@@ -152,7 +209,7 @@ export default function Dashboard() {
       </div>
 
       {/* Recent Orders */}
-      <div className="bg-white rounded-xl border border-admin-border">
+      {/* <div className="bg-white rounded-xl border border-admin-border">
         <div className="flex items-center justify-between px-6 py-4 border-b border-admin-border">
           <h2 className="text-lg font-bold text-slate-900">Recent Orders</h2>
           <Link
@@ -228,10 +285,10 @@ export default function Dashboard() {
             </tbody>
           </table>
         </div>
-      </div>
+      </div> */}
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {/* <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Link
           to="/products"
           className="flex items-center gap-4 bg-white rounded-xl border border-admin-border p-5 hover:shadow-card-hover hover:border-admin-primary/30 transition-all group"
@@ -276,7 +333,7 @@ export default function Dashboard() {
             </p>
           </div>
         </Link>
-      </div>
+      </div> */}
     </div>
   );
 }
