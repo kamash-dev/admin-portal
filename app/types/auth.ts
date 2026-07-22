@@ -2,6 +2,7 @@ export type AdminType = {
   id: string;
   email: string;
   name: string;
+  createdAt?: string;
 }
 
 export type signInResponseType = {

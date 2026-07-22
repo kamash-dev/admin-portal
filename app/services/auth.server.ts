@@ -1,13 +1,13 @@
-import { signInResponseType } from "~/types/auth";
+import { signInResponseType, AdminType } from "~/types/auth";
 import { fetchAPI } from "~/utils/apiConfig.server";
 
 /**
- * Get user profile from identity API
- * @param request - The Remix request object (must have valid session cookie)
- * @returns User profile data
+ * Get the currently authenticated admin's profile from the backend.
+ * @param request - The Remix request object (must have a valid session cookie)
+ * @returns The admin profile wrapped in `{ admin }`
  */
 export async function getUserProfile(request: Request) {
-  return fetchAPI<{ data: any }>(request, "identity/v1/profile", {
+  return fetchAPI<{ admin: AdminType }>(request, "admin/profile", {
     method: "GET",
   });
 }

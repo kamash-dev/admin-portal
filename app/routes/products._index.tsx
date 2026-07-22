@@ -1,21 +1,22 @@
-import { useState, useMemo } from "react";
-import { useLoaderData, useNavigation, Link } from "@remix-run/react";
-import type { LoaderFunctionArgs } from "@remix-run/node";
+import { useState, useMemo, useEffect } from "react";
+import { useLoaderData, useNavigation, useFetcher, Link } from "@remix-run/react";
+import type { LoaderFunctionArgs, ActionFunctionArgs } from "@remix-run/node";
 import {
   Plus,
   Search,
   Filter,
   MoreHorizontal,
-  Edit,
-  Trash2,
   Eye,
   Package,
+  Archive,
+  ArchiveRestore,
   ChevronLeft,
   ChevronRight,
   Loader2,
 } from "lucide-react";
-import { getProducts } from "~/services/product.server";
-import type { Product } from "~/types/product";
+import { toast } from "sonner";
+import { getProducts, updateProductStatus } from "~/services/product.server";
+import type { Product, ProductStatus } from "~/types/product";
 import { Popover, PopoverContent, PopoverTrigger } from "~/components/popover";
 
 const ITEMS_PER_PAGE = 10;
@@ -31,9 +32,8 @@ function getTotalStock(product: Product): number {
 }
 
 function getProductStatus(product: Product): "Active" | "Draft" | "Archived" {
-  const stock = getTotalStock(product);
+  if (product.status === "ARCHIVED") return "Archived";
   if (!product.variants || product.variants.length === 0) return "Draft";
-  if (stock === 0) return "Archived";
   return "Active";
 }
 
@@ -56,15 +56,57 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   }
 };
 
+export const action = async ({ request }: ActionFunctionArgs) => {
+  const formData = await request.formData();
+  const intent = formData.get("intent") as string;
+
+  if (intent === "updateStatus") {
+    const id = formData.get("id") as string;
+    const status = formData.get("status") as ProductStatus;
+    try {
+      const res = await updateProductStatus(request, id, status);
+      return { success: res.message ?? "Product status updated", error: null };
+    } catch (error) {
+      return {
+        success: null,
+        error:
+          error instanceof Error ? error.message : "Failed to update status",
+      };
+    }
+  }
+
+  return { success: null, error: "Unknown action" };
+};
+
 export default function Products() {
   const { products, error } = useLoaderData<typeof loader>();
   const navigation = useNavigation();
   const isLoading = navigation.state === "loading";
 
+  const statusFetcher = useFetcher<typeof action>();
+  const isUpdatingStatus = statusFetcher.state !== "idle";
+  const pendingStatusId = isUpdatingStatus
+    ? (statusFetcher.formData?.get("id") as string | null)
+    : null;
+
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("All");
-  const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    if (statusFetcher.state === "idle" && statusFetcher.data) {
+      if (statusFetcher.data.success) toast.success(statusFetcher.data.success);
+      else if (statusFetcher.data.error) toast.error(statusFetcher.data.error);
+    }
+  }, [statusFetcher.state, statusFetcher.data]);
+
+  const handleStatusChange = (id: string, status: ProductStatus) => {
+    const fd = new FormData();
+    fd.append("intent", "updateStatus");
+    fd.append("id", id);
+    fd.append("status", status);
+    statusFetcher.submit(fd, { method: "post" });
+  };
 
   const filtered = useMemo(() => {
     return (products as Product[]).filter((p) => {
@@ -233,60 +275,52 @@ export default function Products() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-1 relative">
-                        <button
-                          onClick={() =>
-                            setMenuOpen(
-                              menuOpen === product.id ? null : product.id
-                            )
-                          }
-                          className="p-1.5 rounded-md hover:bg-admin-bg text-admin-muted hover:text-slate-700 transition-colors"
-                        >
-                          <Popover>
-                            <PopoverTrigger>
+                        <Popover>
+                          <PopoverTrigger
+                            disabled={
+                              isUpdatingStatus && pendingStatusId === product.id
+                            }
+                            className="p-1.5 rounded-md hover:bg-admin-bg text-admin-muted hover:text-slate-700 transition-colors disabled:opacity-50"
+                          >
+                            {isUpdatingStatus && pendingStatusId === product.id ? (
+                              <Loader2 size={18} className="animate-spin" />
+                            ) : (
                               <MoreHorizontal size={18} />
-                            </PopoverTrigger>
-                            <PopoverContent className="bg-white border border-admin-border rounded-lg shadow-lg w-fit mr-7">
-                              <Link to={`/products/${product.id}/edit`} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-700 cursor-pointer hover:bg-admin-bg transition-colors">
-                                <Eye size={14} />
-                                View
-                              </Link>
-                              <div className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-700 hover:bg-admin-bg transition-colors">
-                                <Trash2 size={14} />
-                                Delete
-                              </div>
-                            </PopoverContent>
-                          </Popover>
-                        </button>
-                        {/* {menuOpen === product.id && (
-                          <>
-                            <div
-                              className="fixed inset-0 z-10"
-                              onClick={() => setMenuOpen(null)}
-                            />
-                            <div className="absolute right-0 top-full mt-1 w-40 bg-white rounded-lg shadow-lg border border-admin-border py-1 z-20">
-                              <Link
-                                to={`/products/${product.id}/edit`}
-                                className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-700 hover:bg-admin-bg transition-colors"
-                                onClick={() => setMenuOpen(null)}
+                            )}
+                          </PopoverTrigger>
+                          <PopoverContent className="bg-white border border-admin-border rounded-lg shadow-lg w-fit mr-7 !p-0 !gap-0">
+                            <Link
+                              to={`/products/${product.id}/edit`}
+                              className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-700 cursor-pointer hover:bg-admin-bg transition-colors"
+                            >
+                              <Eye size={14} />
+                              View
+                            </Link>
+                            {status === "Archived" ? (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleStatusChange(product.id, "ACTIVE")
+                                }
+                                className="flex items-center gap-2 w-full px-3 py-2 text-sm text-emerald-700 cursor-pointer hover:bg-admin-bg transition-colors"
                               >
-                                <Eye size={14} />
-                                View
-                              </Link>
-                              <Link
-                                to={`/products/${product.id}/edit`}
-                                className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-700 hover:bg-admin-bg transition-colors"
-                                onClick={() => setMenuOpen(null)}
-                              >
-                                <Edit size={14} />
-                                Edit
-                              </Link>
-                              <button className="flex items-center gap-2 w-full px-3 py-2 text-sm text-admin-danger hover:bg-red-50 transition-colors">
-                                <Trash2 size={14} />
-                                Delete
+                                <ArchiveRestore size={14} />
+                                Activate
                               </button>
-                            </div>
-                          </>
-                        )} */}
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleStatusChange(product.id, "ARCHIVED")
+                                }
+                                className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-700 cursor-pointer hover:bg-admin-bg transition-colors"
+                              >
+                                <Archive size={14} />
+                                Archive
+                              </button>
+                            )}
+                          </PopoverContent>
+                        </Popover>
                       </div>
                     </td>
                   </tr>

@@ -14,7 +14,8 @@ import type { LinksFunction, LoaderFunctionArgs } from "@remix-run/node";
 import stylesheet from "~/styles/index.css?url";
 import { AuthProvider } from "~/context/auth.context";
 import { AppLayout } from "~/components/layout/AppLayout";
-import { getUser, isAuthenticated } from "./services/session.server";
+import { isAuthenticated } from "./services/session.server";
+import { getUserProfile } from "./services/auth.server";
 
 export const links: LinksFunction = () => [
   { rel: "stylesheet", href: stylesheet },
@@ -28,11 +29,26 @@ export const links: LinksFunction = () => [
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const loggedIn = await isAuthenticated(request);
-  const user = loggedIn ? await getUser(request) : null;
-  // redirect("/login");
+
+  let user = null;
+  if (loggedIn) {
+    try {
+      const profile = await getUserProfile(request);
+      user = profile.admin ?? null;
+    } catch(error) {
+      if (error instanceof Response) {
+        // Check if it's a redirect (status 302, 303, 307, 308) or any 3xx status
+        if (error.status >= 300 && error.status < 400) {
+          throw error;
+        }
+      }
+      user = null;
+    }
+  }
+
   return {
-    isLoggedIn: loggedIn,
-    user: user ?? null,
+    isLoggedIn: loggedIn && !!user,
+    user,
     isLoaded: true,
   };
 };

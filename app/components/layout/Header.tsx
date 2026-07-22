@@ -47,7 +47,7 @@ export default function Header() {
               {user?.name}
             </p>
             <p className="text-xs text-admin-muted leading-tight">
-              {user?.role}
+              {user?.email}
             </p>
           </div>
         </div>

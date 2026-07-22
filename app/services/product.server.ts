@@ -6,10 +6,26 @@ import type {
   CreateProductInput,
   CreateProductResponse,
   CreateVariantInput,
+  ProductStatus,
 } from "~/types/product";
 
 export async function getProducts(request: Request) {
-  return fetchAPI<Product[]>(request, "products", { method: "GET" });
+  // Admin needs to see archived products too, so it can re-activate them.
+  return fetchAPI<Product[]>(request, "products?includeArchived=true", {
+    method: "GET",
+  });
+}
+
+export async function updateProductStatus(
+  request: Request,
+  id: string,
+  status: ProductStatus
+) {
+  return fetchAPI<{ success: boolean; message: string; product: Product }>(
+    request,
+    `products/${id}/status`,
+    { method: "PATCH", body: { status } }
+  );
 }
 
 export async function getCategories(request: Request) {
@@ -27,9 +43,11 @@ export async function createProduct(
 }
 
 export async function getProduct(request: Request, id: string) {
-  const products = await fetchAPI<Product[]>(request, "products", {
-    method: "GET",
-  });
+  const products = await fetchAPI<Product[]>(
+    request,
+    "products?includeArchived=true",
+    { method: "GET" }
+  );
   return products.find((p) => p.id === id) ?? null;
 }
 

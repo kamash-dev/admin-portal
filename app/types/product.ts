@@ -19,6 +19,8 @@ export interface Category {
   };
 }
 
+export type ProductStatus = "ACTIVE" | "ARCHIVED";
+
 export interface Product {
   id: string;
   name: string;
@@ -26,6 +28,7 @@ export interface Product {
   categoryId: string | null;
   category: Category | null;
   variants: ProductVariant[];
+  status: ProductStatus;
   createdAt: string;
 }
 
