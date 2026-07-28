@@ -106,6 +106,8 @@ export interface OrderDetail {
   id: string;
   status: OrderStatus;
   subtotal: number;
+  discountAmount: number;
+  promoCode: string | null;
   deliveryFee: number;
   totalAmount: number;
   paymentMode: PaymentMode;

@@ -434,7 +434,88 @@ export default function OrderDetails() {
               </div>
             </div>
           </div>
+          {/* Payment Info */}
+          <div className="bg-white rounded-xl border border-admin-border overflow-hidden">
+            <div className="px-5 py-4 border-b border-admin-border">
+              <h2 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+                <CreditCard size={16} className="text-admin-primary" />
+                Payment
+              </h2>
+            </div>
+            <div className="px-5 py-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-admin-muted">Method</span>
+                <span
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${
+                    typedOrder.paymentMode === "ONLINE"
+                      ? "bg-blue-50 text-blue-700 border-blue-200"
+                      : "bg-amber-50 text-amber-700 border-amber-200"
+                  }`}
+                >
+                  {typedOrder.paymentMode === "ONLINE" ? (
+                    <CreditCard size={12} />
+                  ) : (
+                    <Banknote size={12} />
+                  )}
+                  {typedOrder.paymentMode === "ONLINE"
+                    ? "Online Payment"
+                    : "Cash on Delivery"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-admin-muted">Subtotal</span>
+                <span className="text-sm font-semibold text-slate-900">
+                  {formatAmount(typedOrder.subtotal)}
+                </span>
+              </div>
+              {typedOrder.discountAmount > 0 && (
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-admin-muted">
+                    Discount{typedOrder.promoCode ? ` (${typedOrder.promoCode})` : ""}
+                  </span>
+                  <span className="text-sm font-semibold text-emerald-600">
+                    -{formatAmount(typedOrder.discountAmount)}
+                  </span>
+                </div>
+              )}
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-admin-muted">Delivery Fee</span>
+                <span className="text-sm font-semibold text-slate-900">
+                  {typedOrder.deliveryFee ? formatAmount(typedOrder.deliveryFee) : "Free"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between"> 
+                <span className="text-xs text-admin-muted">Total</span>
+                <span className="text-sm font-semibold text-slate-900">
+                  {formatAmount(typedOrder.totalAmount)}
+                </span>
+              </div>
+              {typedOrder.razorpayOrderId && (
+                <div>
+                  <p className="text-xs text-admin-muted mb-1">
+                    Razorpay Order ID
+                  </p>
+                  <CopyableId value={typedOrder.razorpayOrderId} />
+                </div>
+              )}
+              {typedOrder.razorpayPaymentId && (
+                <div>
+                  <p className="text-xs text-admin-muted mb-1">
+                    Razorpay Payment ID
+                  </p>
+                  <CopyableId value={typedOrder.razorpayPaymentId} />
+                </div>
+              )}
+              {!typedOrder.razorpayOrderId &&
+                !typedOrder.razorpayPaymentId && (
+                  <p className="text-xs text-admin-muted italic">
+                    No payment details available
+                  </p>
+                )}
+            </div>
+          </div>
         </div>
+        
 
         {/* Right column - sidebar */}
         <div className="space-y-6">
@@ -500,76 +581,7 @@ export default function OrderDetails() {
             </div>
           </div>
 
-          {/* Payment Info */}
-          <div className="bg-white rounded-xl border border-admin-border overflow-hidden">
-            <div className="px-5 py-4 border-b border-admin-border">
-              <h2 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
-                <CreditCard size={16} className="text-admin-primary" />
-                Payment
-              </h2>
-            </div>
-            <div className="px-5 py-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-admin-muted">Method</span>
-                <span
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${
-                    typedOrder.paymentMode === "ONLINE"
-                      ? "bg-blue-50 text-blue-700 border-blue-200"
-                      : "bg-amber-50 text-amber-700 border-amber-200"
-                  }`}
-                >
-                  {typedOrder.paymentMode === "ONLINE" ? (
-                    <CreditCard size={12} />
-                  ) : (
-                    <Banknote size={12} />
-                  )}
-                  {typedOrder.paymentMode === "ONLINE"
-                    ? "Online Payment"
-                    : "Cash on Delivery"}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-admin-muted">Subtotal</span>
-                <span className="text-sm font-semibold text-slate-900">
-                  {formatAmount(typedOrder.subtotal)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-admin-muted">Delivery Fee</span>
-                <span className="text-sm font-semibold text-slate-900">
-                  {typedOrder.deliveryFee ? formatAmount(typedOrder.deliveryFee) : "Free"}
-                </span>
-              </div>
-              <div className="flex items-center justify-between"> 
-                <span className="text-xs text-admin-muted">Total</span>
-                <span className="text-sm font-semibold text-slate-900">
-                  {formatAmount(typedOrder.totalAmount)}
-                </span>
-              </div>
-              {typedOrder.razorpayOrderId && (
-                <div>
-                  <p className="text-xs text-admin-muted mb-1">
-                    Razorpay Order ID
-                  </p>
-                  <CopyableId value={typedOrder.razorpayOrderId} />
-                </div>
-              )}
-              {typedOrder.razorpayPaymentId && (
-                <div>
-                  <p className="text-xs text-admin-muted mb-1">
-                    Razorpay Payment ID
-                  </p>
-                  <CopyableId value={typedOrder.razorpayPaymentId} />
-                </div>
-              )}
-              {!typedOrder.razorpayOrderId &&
-                !typedOrder.razorpayPaymentId && (
-                  <p className="text-xs text-admin-muted italic">
-                    No payment details available
-                  </p>
-                )}
-            </div>
-          </div>
+          
 
           {/* Timestamps */}
           <div className="bg-white rounded-xl border border-admin-border overflow-hidden">

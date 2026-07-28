@@ -10,6 +10,7 @@ import {
   ChevronRight,
   LogOut,
   Shield,
+  Ticket,
 } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "~/context/auth.context";
@@ -18,6 +19,7 @@ const navItems = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard" },
   { to: "/products", icon: Package, label: "Products" },
   { to: "/categories", icon: FolderOpen, label: "Categories" },
+  { to: "/promos", icon: Ticket, label: "Promo Codes" },
   { to: "/orders", icon: ShoppingCart, label: "Orders" },
   { to: "/customers", icon: Users, label: "Customers" },
   { to: "/settings", icon: Settings, label: "Settings" },
