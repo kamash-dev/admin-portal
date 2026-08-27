@@ -110,10 +110,13 @@ export async function fetchAPI<T = any>(
   if (response.status === 401) {
     // Destroy session cookie
     const clearedCookieHeader = await destroySession();
-    
-    // Redirect to home page with cleared session cookie
-    // Note: redirect() returns a Response that must be thrown
-    throw redirect("/", {
+
+    // Redirect to the login page (NOT "/") with the cleared session cookie.
+    // "/" is the protected dashboard, which would immediately make another
+    // authenticated API call, get another 401, and redirect back to "/" —
+    // producing the "localhost redirected you too many times" loop.
+    // The /login route has no loader, so it safely breaks the cycle.
+    throw redirect("/login", {
       headers: {
         "Set-Cookie": clearedCookieHeader,
       },
